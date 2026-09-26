@@ -423,6 +423,18 @@
     .project-link:hover { opacity: 0.75; }
     .coming-soon { font-size: 13px; color: var(--text-muted); font-style: italic; }
 
+    .case-study-single {
+      max-width: 460px;
+      margin: 56px auto 0;
+    }
+
+    .case-study-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: -6px;
+      margin-bottom: 16px;
+    }
+
     .skills-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -548,6 +560,7 @@
       <li><a href="javascript:void(0)" onclick="document.getElementById('about').scrollIntoView({behavior:'smooth'})">About</a></li>
       <li><a href="javascript:void(0)" onclick="document.getElementById('audit-lanes').scrollIntoView({behavior:'smooth'})">Methodology</a></li>
       <li><a href="javascript:void(0)" onclick="document.getElementById('projects').scrollIntoView({behavior:'smooth'})">Projects</a></li>
+      <li><a href="javascript:void(0)" onclick="document.getElementById('case-studies').scrollIntoView({behavior:'smooth'})">Case Studies</a></li>
       <li><a href="javascript:void(0)" onclick="document.getElementById('skills').scrollIntoView({behavior:'smooth'})">Skills</a></li>
       <li><a href="javascript:void(0)" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Contact</a></li>
     </ul>
@@ -720,6 +733,22 @@
           <p class="project-desc">A published blog exploring the distinctions between what we think, what we feel, and what we do. Written for people who want to close the gap between intention and action. Live and growing.</p>
           <div class="project-stack"><span class="stack-tag">Content Strategy</span><span class="stack-tag">SEO Writing</span><span class="stack-tag">Publishing</span></div>
           <a href="https://practicalife.com" class="project-link" target="_blank">Read the Blog</a>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <section class="section reveal" id="case-studies">
+      <p class="section-eyebrow">Case Studies: Behind the Build</p>
+      <h2 class="section-title">What I caught along the way.</h2>
+      <p class="section-body">Every project above is a finished thing. This section is about what happened while building them — moments something looked right, wasn't, and what it took to notice the difference.</p>
+      <div class="case-study-single">
+        <div class="project-card">
+          <h3 class="project-title">When a paywall isn't actually a paywall</h3>
+          <p class="case-study-subtitle">(CX Audit Report System)</p>
+          <p class="project-desc">While building the CX Audit Report System, I found that a CSS-based paywall was visually locking findings while leaving the real content readable in the page's source. Here's how I caught it, and what it actually took to fix.</p>
+          <a href="case-study-paywall.html" class="project-link">Read the Case Study</a>
         </div>
       </div>
     </section>

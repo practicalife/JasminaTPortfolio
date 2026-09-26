@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>When a Paywall Isn't Actually a Paywall — Jasmina Toure</title>
+  <meta name="description" content="A case study on catching and fixing a CSS-only paywall that left gated content readable in the page source." />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F8F9FA;
+      --surface: #EEF2F7;
+      --accent: #4A90D9;
+      --accent-dim: rgba(74,144,217,0.12);
+      --navy: #1A1A2E;
+      --text: #1A1A2E;
+      --text-warm: #444444;
+      --text-muted: #777788;
+      --border: rgba(26,26,46,0.1);
+      --serif: 'Playfair Display', Georgia, serif;
+      --sans: 'Inter', system-ui, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(26,26,46,0.96);
+      backdrop-filter: blur(12px);
+      padding: 20px 48px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .topbar a {
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+    }
+
+    .topbar a:hover { color: #fff; }
+
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 72px 24px 120px;
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-size: clamp(32px, 5vw, 46px);
+      line-height: 1.15;
+      margin-bottom: 18px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 48px;
+    }
+
+    h2.section-h {
+      font-family: var(--serif);
+      font-size: 22px;
+      margin: 56px 0 16px;
+    }
+
+    p {
+      font-size: 16px;
+      color: var(--text-warm);
+      margin-bottom: 18px;
+    }
+
+    p.context {
+      font-size: 18px;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .caption {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-top: 14px;
+      line-height: 1.6;
+    }
+
+    .insight-block {
+      background: var(--surface);
+      border-left: 3px solid var(--accent);
+      padding: 28px 30px;
+      border-radius: 4px;
+      margin: 20px 0 8px;
+    }
+
+    .insight-block p {
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.8;
+      margin-bottom: 0;
+    }
+
+    /* Mockup */
+    .mock {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-top: 8px;
+      box-shadow: 0 8px 24px rgba(26,26,46,0.08);
+    }
+
+    .mock-browser {
+      background: #fff;
+    }
+
+    .mock-chrome {
+      background: #E4E7EC;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mock-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: #C7CCD4;
+    }
+
+    .mock-url {
+      margin-left: 8px;
+      background: #fff;
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      flex: 1;
+      font-family: var(--sans);
+    }
+
+    .mock-body {
+      padding: 22px 24px;
+      background: #fff;
+    }
+
+    .mock-heading {
+      font-family: var(--serif);
+      font-size: 15px;
+      color: var(--navy);
+      margin-bottom: 12px;
+    }
+
+    .locked-visual {
+      position: relative;
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .locked-visual .blur-text {
+      filter: blur(5px);
+      user-select: none;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-warm);
+      padding: 16px;
+    }
+
+    .lock-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: rgba(26,26,46,0.06);
+    }
+
+    .lock-icon { font-size: 20px; }
+
+    .lock-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--navy);
+      background: #fff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(26,26,46,0.12);
+    }
+
+    .mock-source {
+      background: #1A1A2E;
+    }
+
+    .mock-source-label {
+      background: #12121F;
+      padding: 8px 14px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      letter-spacing: 0.05em;
+    }
+
+    .mock-code {
+      padding: 20px 22px;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.75;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .code-tag { color: #7FB3E8; }
+    .code-class { color: #E8B86D; }
+    .code-text { color: #F0F0F5; }
+    .code-comment { color: #6B7280; font-style: italic; }
+    .code-flag-bad { color: #E67C7C; }
+    .code-flag-good { color: #7FCF9E; }
+
+    .pair-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    @media (min-width: 640px) {
+      .pair-row { grid-template-columns: 1fr 1fr; }
+    }
+
+    .pair-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .closing {
+      margin-top: 56px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+    }
+
+    .demo-link {
+      display: inline-block;
+      margin-top: 14px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .demo-link:hover { opacity: 0.75; }
+
+    @media (max-width: 640px) {
+      .topbar { padding: 16px 20px; }
+      .wrap { padding: 48px 18px 90px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <a href="index.html#projects">&larr; Back to Portfolio</a>
+  </div>
+
+  <div class="wrap">
+    <p class="eyebrow">Case Study — CX Audit Report System</p>
+    <h1>When a paywall isn't actually a paywall</h1>
+    <p class="subtitle">A gap between what an interface implies and what a system actually enforces, caught and fixed.</p>
+
+    <p class="context">While building the CX Audit Report System, I designed a paid-unlock flow where a client's full findings stay hidden until payment. This is the mechanism that gates it.</p>
+
+    <h2 class="section-h">Before</h2>
+
+    <div class="pair-row">
+      <div>
+        <p class="pair-label">What a visitor saw</p>
+        <div class="mock mock-browser">
+          <div class="mock-chrome">
+            <span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span>
+            <span class="mock-url">audits.practicalife.com/report-xxxxx</span>
+          </div>
+          <div class="mock-body">
+            <p class="mock-heading">Key Observations</p>
+            <div class="locked-visual">
+              <p class="blur-text">Sample finding text sits here describing a customer experience gap, written out in full sentences that read like real findings.</p>
+              <div class="lock-overlay">
+                <span class="lock-icon">🔒</span>
+                <span class="lock-label">Unlock after payment</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="pair-label">What was in the page's code</p>
+        <div class="mock mock-source">
+          <div class="mock-source-label">view-source:audits.practicalife.com</div>
+          <div class="mock-code"><span class="code-comment">&lt;!-- .locked-content is only styled with a CSS blur --&gt;</span>
+<span class="code-tag">&lt;div</span> <span class="code-class">class="locked-content blurred-content"</span><span class="code-tag">&gt;</span>
+  <span class="code-text">&lt;p&gt;Sample finding text sits here describing</span>
+  <span class="code-text">a customer experience gap, written out</span>
+  <span class="code-text">in full sentences that read like real</span>
+  <span class="code-text">findings.&lt;/p&gt;</span>
+<span class="code-tag">&lt;/div&gt;</span>
+<span class="code-flag-bad">// readable in plain text, no payment required</span></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="caption">To a visitor, this section was locked. In the page's own code, it wasn't. The full findings sat there in plain, readable text, one right-click away.</p>
+
+    <h2 class="section-h">The insight</h2>
+
+    <div class="insight-block">
+      <p>The locked sections were hidden with a CSS blur, visually gated but not actually removed from the page. Anyone who right-clicked and chose "View Source," or simply copied the page, could read the full findings in plain text, no payment required. The blur worked on the eye. It did nothing to the data. I traced the bug to that gap, not "the page looks unlocked," but "the thing meant to make it inaccessible never touched accessibility at all." The fix was to stop treating visibility and access as the same control: pull the real content out of the public file entirely, and only release it from a separate, private source after payment confirms.</p>
+    </div>
+
+    <h2 class="section-h">After</h2>
+
+    <div class="pair-row">
+      <div>
+        <p class="pair-label">What a visitor sees</p>
+        <div class="mock mock-browser">
+          <div class="mock-chrome">
+            <span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span>
+            <span class="mock-url">audits.practicalife.com/report-xxxxx</span>
+          </div>
+          <div class="mock-body">
+            <p class="mock-heading">Key Observations</p>
+            <div class="locked-visual">
+              <p class="blur-text">Sample finding text sits here describing a customer experience gap, written out in full sentences that read like real findings.</p>
+              <div class="lock-overlay">
+                <span class="lock-icon">🔒</span>
+                <span class="lock-label">Unlock after payment</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="pair-label">What's in the page's code now</p>
+        <div class="mock mock-source">
+          <div class="mock-source-label">view-source:audits.practicalife.com</div>
+          <div class="mock-code"><span class="code-comment">&lt;!-- real findings live in a private file, not here --&gt;</span>
+<span class="code-tag">&lt;div</span> <span class="code-class">class="locked-content blurred-content"</span><span class="code-tag">&gt;</span>
+  <span class="code-text">&lt;p&gt;[Redacted Until Unlock]&lt;/p&gt;</span>
+<span class="code-tag">&lt;/div&gt;</span>
+<span class="code-flag-good">// nothing to read, whether it's blurred or not</span></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="caption">Same screen. Different reality underneath. The real findings no longer exist in the page at all until payment is confirmed.</p>
+
+    <div class="closing">
+      <p>This wasn't a cosmetic fix. It closed a gap between what the interface implied and what the system actually enforced, the same gap I get paid to find in other people's products.</p>
+      <a href="https://audits.practicalife.com" target="_blank" class="demo-link">See the live audit demo &rarr;</a>
+    </div>
+  </div>
+
+</body>
+</html>
