@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Code Worked. The Platform Said No. — Jasmina Toure</title>
+  <meta name="description" content="A case study on catching a platform-policy dead end mid-build, and migrating a cold outreach pipeline to the right tool for the job." />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F8F9FA;
+      --surface: #EEF2F7;
+      --accent: #4A90D9;
+      --accent-dim: rgba(74,144,217,0.12);
+      --navy: #1A1A2E;
+      --text: #1A1A2E;
+      --text-warm: #444444;
+      --text-muted: #777788;
+      --border: rgba(26,26,46,0.1);
+      --serif: 'Playfair Display', Georgia, serif;
+      --sans: 'Inter', system-ui, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(26,26,46,0.96);
+      backdrop-filter: blur(12px);
+      padding: 20px 48px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .topbar a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; font-weight: 500; letter-spacing: 0.05em; }
+    .topbar a:hover { color: #fff; }
+
+    .wrap { max-width: 760px; margin: 0 auto; padding: 72px 24px 120px; }
+
+    .eyebrow {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 20px;
+    }
+
+    h1 { font-family: var(--serif); font-size: clamp(30px, 5vw, 44px); line-height: 1.15; margin-bottom: 18px; }
+    .subtitle { font-size: 15px; color: var(--text-muted); margin-bottom: 48px; }
+    h2.section-h { font-family: var(--serif); font-size: 24px; margin: 64px 0 16px; }
+    h3.item-h { font-family: var(--serif); font-size: 17px; margin: 28px 0 8px; color: var(--text); }
+
+    p { font-size: 16px; color: var(--text-warm); margin-bottom: 18px; }
+    p.context { font-size: 18px; color: var(--text); line-height: 1.7; }
+
+    .caption { font-size: 14px; color: var(--text-muted); font-style: italic; margin-top: 14px; line-height: 1.6; }
+
+    .insight-block {
+      background: var(--surface); border-left: 3px solid var(--accent);
+      padding: 28px 30px; border-radius: 4px; margin: 20px 0 8px;
+    }
+    .insight-block p { color: var(--text); font-size: 16px; line-height: 1.8; margin-bottom: 14px; }
+    .insight-block p:last-child { margin-bottom: 0; }
+
+    .step-list { margin: 16px 0 8px; padding-left: 0; list-style: none; }
+    .step-list li {
+      font-size: 15px; color: var(--text-warm); line-height: 1.75;
+      padding-left: 22px; position: relative; margin-bottom: 12px;
+    }
+    .step-list li::before {
+      content: "→"; position: absolute; left: 0; color: var(--accent); font-weight: 600;
+    }
+
+    /* Mockups */
+    .mock { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); margin-top: 8px; box-shadow: 0 8px 24px rgba(26,26,46,0.08); }
+    .mock-browser { background: #fff; }
+    .mock-chrome { background: #E4E7EC; padding: 10px 14px; display: flex; align-items: center; gap: 8px; }
+    .mock-dot { width: 9px; height: 9px; border-radius: 50%; background: #C7CCD4; }
+    .mock-url { margin-left: 8px; background: #fff; border-radius: 4px; padding: 4px 12px; font-size: 11px; color: var(--text-muted); flex: 1; }
+    .mock-body { padding: 22px 24px; background: #fff; }
+
+    .alert-box {
+      background: #FDECEC; border: 1px solid rgba(192,57,43,0.25); border-radius: 6px;
+      padding: 16px 18px; font-size: 13px; color: #A93226; line-height: 1.6;
+    }
+    .alert-box strong { display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .success-box {
+      background: #EAF7F0; border: 1px solid rgba(46,125,91,0.25); border-radius: 6px;
+      padding: 16px 18px; font-size: 13px; color: #1E6B4C; line-height: 1.7;
+    }
+    .success-box strong { display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .mock-source { background: #1A1A2E; }
+    .mock-source-label { background: #12121F; padding: 8px 14px; font-size: 11px; color: rgba(255,255,255,0.4); font-family: 'SFMono-Regular', Consolas, monospace; letter-spacing: 0.05em; }
+    .mock-code { padding: 20px 22px; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; font-size: 12px; line-height: 1.75; overflow-x: auto; white-space: pre; }
+    .code-comment { color: #6B7280; font-style: italic; }
+    .code-text { color: #F0F0F5; }
+    .code-flag-good { color: #7FCF9E; }
+    .code-flag-bad { color: #E67C7C; }
+    .code-var { color: #E8B86D; }
+    .code-fn { color: #7FB3E8; }
+
+    .pair-row { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    @media (min-width: 640px) { .pair-row { grid-template-columns: 1fr 1fr; } }
+
+    .pair-label { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+
+    .closing { margin-top: 56px; padding-top: 32px; border-top: 1px solid var(--border); }
+    .demo-link { display: inline-block; margin-top: 14px; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; }
+    .demo-link:hover { opacity: 0.75; }
+
+    @media (max-width: 640px) { .topbar { padding: 16px 20px; } .wrap { padding: 48px 18px 90px; } }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <a href="index.html#case-studies">&larr; Back to Portfolio</a>
+  </div>
+
+  <div class="wrap">
+    <p class="eyebrow">Case Study — Automated Lead Generation System</p>
+    <h1>The code worked. The platform said no.</h1>
+    <p class="subtitle">A pipeline that ran correctly end to end, blocked not by a bug, but by a platform's own policy, and what it took to notice the difference.</p>
+
+    <p class="context">This pipeline automates cold outreach for the supervised visitation business. Instead of manually emailing individual social workers, attorneys, and family law professionals one at a time, it reads a CSV export of prospects, deduplicates against everyone already contacted, and pushes the new batch into an email platform on a weekly schedule via GitHub Actions. The problem it solves: turning a slow, easy-to-forget manual outreach task into something that runs itself, without duplicating contacts or losing track of who's been reached.</p>
+
+    <h2 class="section-h">Before</h2>
+
+    <div class="pair-row">
+      <div>
+        <p class="pair-label">What happened at send time</p>
+        <div class="mock mock-browser">
+          <div class="mock-chrome">
+            <span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span>
+            <span class="mock-url">mailchimp.com/campaigns/review</span>
+          </div>
+          <div class="mock-body">
+            <div class="alert-box">
+              <strong>Campaign Rejected</strong>
+              This audience contains contacts who have not opted in. Mailchimp's policies prohibit sending campaigns to non-permission-based contact lists.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="pair-label">What the code had already done correctly</p>
+        <div class="mock mock-source">
+          <div class="mock-source-label">pipeline run — GitHub Actions</div>
+          <div class="mock-code"><span class="code-comment">// contacts synced ✓</span>
+<span class="code-fn">addMember</span>(audience, contact)  <span class="code-flag-good">// success</span>
+
+<span class="code-comment">// draft campaign created ✓</span>
+<span class="code-fn">createCampaignDraft</span>(audience)  <span class="code-flag-good">// success</span>
+<span class="code-fn">setCampaignContent</span>(campaign, template)  <span class="code-flag-good">// success</span>
+
+<span class="code-comment">// submitted for send —</span>
+<span class="code-flag-bad">// blocked by platform policy, not by an error</span></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="caption">The pipeline was built and working end to end on Mailchimp, contacts synced, draft campaign created. Then Mailchimp rejected the campaign outright with a compliance warning: their platform prohibits sending to non-opted-in contacts, which is exactly what cold outreach is. The tool worked technically but was structurally the wrong fit for the use case.</p>
+
+    <h2 class="section-h">The insight</h2>
+
+    <div class="insight-block">
+      <p>This wasn't caught by analytics, and not something I noticed while working on something else. Mailchimp itself flagged it, an active enforcement action from the platform, triggered the moment the campaign was submitted for review. That's a distinct failure mode from a bug: the code executed correctly, but the platform's own policy blocked the actual goal.</p>
+      <p>The root cause wasn't a broken integration. It was verifying that Mailchimp's stated policy prohibits cold outreach to non-opted-in contacts, full stop, against a platform like Instantly.ai, which is built specifically for cold outreach. No amount of debugging the Mailchimp integration would have fixed this, because there was nothing broken to fix. The pipeline needed a different tool, not a better version of the same one.</p>
+    </div>
+
+    <h2 class="section-h">After</h2>
+
+    <div class="pair-row">
+      <div>
+        <p class="pair-label">The migration</p>
+        <div class="mock mock-source">
+          <div class="mock-source-label">mailchimp.js → instantly.js</div>
+          <div class="mock-code"><span class="code-comment">// Mailchimp: audience + draft-campaign model</span>
+<span class="code-fn">addMember</span> / <span class="code-fn">createCampaignDraft</span> / <span class="code-fn">setCampaignContent</span>
+
+<span class="code-comment">// Instantly: single call against an existing campaign</span>
+<span class="code-fn">addLead</span>(campaignId, lead)
+
+<span class="code-comment">// index.js rewritten to match: leads added directly</span>
+<span class="code-comment">// to a live campaign, no audience/draft step</span></div>
+        </div>
+      </div>
+
+      <div>
+        <p class="pair-label">Verified, not assumed</p>
+        <div class="mock mock-browser">
+          <div class="mock-body">
+            <div class="success-box">
+              <strong>Test Send Result</strong>
+              100/100 deliverability score<br/>
+              SPF/DKIM authenticated<br/>
+              Confirmed landing in inbox, not spam
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="item-h">A second-order bug, caught mid-migration</h3>
+    <p>Initially pointed the integration at an Instantly "AI Sales Agent" object instead of a plain "Campaign" object, same platform, different API shape, silent success responses that added nothing. Diagnosed by querying the API directly rather than trusting the UI.</p>
+
+    <h3 class="item-h">End state</h3>
+    <ul class="step-list">
+      <li>14 real contacts loaded, campaign live</li>
+      <li>A/B-tested subject lines, tested by reply rate rather than opens, to avoid the tracking-pixel deliverability tradeoff</li>
+      <li>Capped at 2 sends per day to stay conservative on a freshly connected, unwarmed sending account</li>
+    </ul>
+
+    <div class="closing">
+      <p>That last decision, capping sends on a brand-new account instead of pushing volume the moment it worked, wasn't the fastest configuration available. It was the one that protected deliverability long enough for the account to earn trust with the platform, a decision made for a reason, not just the first thing that shipped.</p>
+    </div>
+  </div>
+
+</body>
+</html>
