@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>It Worked Locally. It Didn't Work Live. — Jasmina Toure</title>
+  <meta name="description" content="A case study on catching a silently corrupted PDF in production, and everything else caught while building Practical Life Visitations." />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F8F9FA;
+      --surface: #EEF2F7;
+      --accent: #4A90D9;
+      --accent-dim: rgba(74,144,217,0.12);
+      --navy: #1A1A2E;
+      --text: #1A1A2E;
+      --text-warm: #444444;
+      --text-muted: #777788;
+      --border: rgba(26,26,46,0.1);
+      --serif: 'Playfair Display', Georgia, serif;
+      --sans: 'Inter', system-ui, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(26,26,46,0.96);
+      backdrop-filter: blur(12px);
+      padding: 20px 48px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .topbar a {
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+    }
+
+    .topbar a:hover { color: #fff; }
+
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 72px 24px 120px;
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 5vw, 44px);
+      line-height: 1.15;
+      margin-bottom: 18px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 48px;
+    }
+
+    h2.section-h {
+      font-family: var(--serif);
+      font-size: 24px;
+      margin: 64px 0 16px;
+    }
+
+    h3.item-h {
+      font-family: var(--serif);
+      font-size: 18px;
+      margin: 36px 0 10px;
+      color: var(--text);
+    }
+
+    p {
+      font-size: 16px;
+      color: var(--text-warm);
+      margin-bottom: 18px;
+    }
+
+    p.context {
+      font-size: 18px;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .caption {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-top: 14px;
+      line-height: 1.6;
+    }
+
+    .insight-block {
+      background: var(--surface);
+      border-left: 3px solid var(--accent);
+      padding: 28px 30px;
+      border-radius: 4px;
+      margin: 20px 0 8px;
+    }
+
+    .insight-block p {
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.8;
+      margin-bottom: 0;
+    }
+
+    .decision-block {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 26px 28px;
+      margin-bottom: 20px;
+    }
+
+    .decision-block p {
+      font-size: 15px;
+      line-height: 1.75;
+      margin-bottom: 0;
+    }
+
+    .catch-item {
+      border-left: 3px solid var(--border);
+      padding-left: 20px;
+      margin-bottom: 28px;
+    }
+
+    .catch-item p {
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    /* Mockups */
+    .mock {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-top: 8px;
+      box-shadow: 0 8px 24px rgba(26,26,46,0.08);
+    }
+
+    .mock-browser { background: #fff; }
+
+    .mock-chrome {
+      background: #E4E7EC;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mock-dot { width: 9px; height: 9px; border-radius: 50%; background: #C7CCD4; }
+
+    .mock-url {
+      margin-left: 8px;
+      background: #fff;
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      flex: 1;
+      font-family: var(--sans);
+    }
+
+    .mock-body { padding: 22px 24px; background: #fff; }
+
+    .pdf-page {
+      background: #fbfbfc;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 18px 20px;
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text-warm);
+    }
+
+    .pdf-title {
+      font-family: var(--serif);
+      font-size: 13px;
+      color: var(--navy);
+      margin-bottom: 10px;
+    }
+
+    .pdf-garbled {
+      color: #C0392B;
+      background: rgba(192,57,43,0.08);
+      padding: 2px 4px;
+      border-radius: 2px;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+    }
+
+    .pdf-stray {
+      position: relative;
+      margin: 8px 0;
+      color: #C0392B;
+      font-style: italic;
+      font-size: 11px;
+    }
+
+    .pdf-fixed {
+      color: #2E7D5B;
+      font-weight: 600;
+    }
+
+    .mock-source { background: #1A1A2E; }
+
+    .mock-source-label {
+      background: #12121F;
+      padding: 8px 14px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      letter-spacing: 0.05em;
+    }
+
+    .mock-code {
+      padding: 20px 22px;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+      font-size: 12px;
+      line-height: 1.75;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .code-comment { color: #6B7280; font-style: italic; }
+    .code-text { color: #F0F0F5; }
+    .code-flag-good { color: #7FCF9E; }
+    .code-flag-bad { color: #E67C7C; }
+    .code-var { color: #E8B86D; }
+
+    .pair-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    @media (min-width: 640px) {
+      .pair-row { grid-template-columns: 1fr 1fr; }
+    }
+
+    .pair-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .closing {
+      margin-top: 56px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+    }
+
+    .demo-link {
+      display: inline-block;
+      margin-top: 14px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .demo-link:hover { opacity: 0.75; }
+
+    @media (max-width: 640px) {
+      .topbar { padding: 16px 20px; }
+      .wrap { padding: 48px 18px 90px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <a href="index.html#case-studies">&larr; Back to Portfolio</a>
+  </div>
+
+  <div class="wrap">
+    <p class="eyebrow">Case Study — Practical Life Visitations</p>
+    <h1>It worked locally. It didn't work live.</h1>
+    <p class="subtitle">A corrupted PDF, a false assumption about what "verified" means, and everything else caught building the same site.</p>
+
+    <p class="context">Practical Life Visitations is a virtual-only, court-approved supervised visitation service, built for families who can't be in the same room due to distance, incarceration, or a court order. The site serves two capability-statement PDFs, one California-specific, one a "national" version for private and voluntary out-of-state accounts, the document a county case worker, procurement contact, or referring agency opens to decide whether to place a referral or add the service as a vendor.</p>
+
+    <h2 class="section-h">Before</h2>
+
+    <div class="pair-row">
+      <div>
+        <p class="pair-label">The live, deployed PDF</p>
+        <div class="mock mock-browser">
+          <div class="mock-chrome">
+            <span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span>
+            <span class="mock-url">visitations.practicalife.com/capability-statement.pdf</span>
+          </div>
+          <div class="mock-body">
+            <div class="pdf-page">
+              <p class="pdf-title">Capability Statement — National</p>
+              <p>Practical Life Visitations provides virtual supervised visitation services for private and voluntary accounts nationwide.</p>
+              <p class="pdf-stray">Minnesota (Operating Nationwide)</p>
+              <p>Contact: <span class="pdf-garbled">To start NGS LLC</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="pair-label">What was actually happening on push</p>
+        <div class="mock mock-source">
+          <div class="mock-source-label">deploy log — Cloudflare Function</div>
+          <div class="mock-code"><span class="code-comment">// PDF binary embedded as one giant base64 string literal</span>
+<span class="code-var">const</span> pdfBase64 = <span class="code-text">"JVBERi0xLjQKJ...[one continuous string]..."</span>
+
+<span class="code-comment">// local copy: parses fine ✓</span>
+<span class="code-comment">// live copy: silently corrupted somewhere in push-and-deploy</span>
+<span class="code-flag-bad">// two "fixed it" pushes shipped the same bug —</span>
+<span class="code-flag-bad">// local and live were never actually compared</span></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="caption">The national PDF rendered corrupted on the live, deployed site: a stray floating line reading "Minnesota (Operating Nationwide)" sat in the wrong place, and the real business contact information was replaced with garbled text. This PDF is what a procurement officer or agency contact opens to decide whether to place a case. A garbled document at that exact decision point reads as illegitimate.</p>
+
+    <h2 class="section-h">The insight</h2>
+
+    <div class="insight-block">
+      <p>The PDF's binary content was embedded in a Cloudflare Function as one large base64 string literal. That giant string was getting silently corrupted somewhere in the push-and-deploy path, even though the local copy parsed fine before pushing. Two rounds of "fixed it," based on local verification, still shipped the same bug, because the local copy and the live, served file weren't actually the same content.</p>
+    </div>
+
+    <h2 class="section-h">After</h2>
+
+    <div class="pair-row">
+      <div>
+        <p class="pair-label">The corrected PDF</p>
+        <div class="mock mock-browser">
+          <div class="mock-chrome">
+            <span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span>
+            <span class="mock-url">visitations.practicalife.com/capability-statement.pdf</span>
+          </div>
+          <div class="mock-body">
+            <div class="pdf-page">
+              <p class="pdf-title">Capability Statement — National</p>
+              <p>Practical Life Visitations provides virtual supervised visitation services for private and voluntary accounts nationwide.</p>
+              <p class="pdf-fixed">✓ Contact and service details render correctly</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="pair-label">What changed</p>
+        <div class="mock mock-source">
+          <div class="mock-source-label">deploy log — verification step</div>
+          <div class="mock-code"><span class="code-comment">// 1. disabled PDF stream compression at generation</span>
+<span class="code-comment">//    (simpler, more resilient underlying stream)</span>
+
+<span class="code-comment">// 2. split one giant base64 string into small chunks,</span>
+<span class="code-comment">//    reassembled at request time</span>
+<span class="code-var">const</span> PDF_BASE64_CHUNKS = [<span class="code-text">"...", "...", "..."</span>]
+
+<span class="code-comment">// 3. after every push: re-fetch + decode the ACTUAL</span>
+<span class="code-comment">//    live file from GitHub, parse it, confirm it's</span>
+<span class="code-comment">//    correct — before calling the fix done</span>
+<span class="code-flag-good">// verifies the live file, not the local copy</span></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="caption">Disabled PDF stream compression at generation time so the underlying stream is simpler and more resilient. Split the base64 payload from one giant string into an array of small chunks joined at request time, since smaller pieces are less likely to be mangled in transit. Added a verification step: after every push, re-fetch and decode the actual live content from GitHub, not the local working copy, and run it through a PDF parser to confirm it parses correctly and contains the right text, before calling the fix done.</p>
+
+    <div class="closing">
+      <p>This changed what "done" means. Not "it works on my machine," but "I confirmed the exact file a stranger would actually receive."</p>
+    </div>
+
+    <h2 class="section-h">Design decisions, and why</h2>
+
+    <h3 class="item-h">Making a solo practice read as an established process</h3>
+    <div class="decision-block">
+      <p>When you're a solo practitioner, there's no receptionist, no shared team inbox, no separate ops person logging referrals. A county case worker or agency contact deciding whether to place a case with you is implicitly asking whether this organization has its act together, or whether they'd be handing a case to one person's personal email. The admin-side setup, a dedicated business email that sends automated case correspondence and routes replies somewhere actually checked, a referral form that captures structured information instead of "just email me," PDFs served on request instead of attached ad hoc, makes the process feel institutional and repeatable, even though it's running behind one person. This isn't about deceiving anyone. It's about the intake experience not signaling "solo operation, hope she checks her phone."</p>
+    </div>
+
+    <h3 class="item-h">Sizing the form to what the visitor actually has</h3>
+    <div class="decision-block">
+      <p>Two different kinds of visitors hit a "sign up" moment on the site, carrying different amounts of real information and real intent. Someone curious about the not-yet-live parenting-coaching offering is just raising their hand, no case file, no referral number, no documents, and asking for more than an email would lose them for nothing, since there's nothing to act on yet anyway. A case worker or agency contact submitting an actual referral almost always has something in hand, a referral order, case details, sometimes a document, and a single email field would under-collect what's needed to act on it, leading to chasing them by reply-email regardless. The two forms aren't the same form styled differently, they're sized to how much the visitor actually has to give at that moment.</p>
+    </div>
+
+    <h2 class="section-h">Other things I caught, building the same site</h2>
+
+    <div class="catch-item">
+      <h3 class="item-h">The compliance claim that would have shipped false</h3>
+      <p>A draft bullet for the national capability statement cited FAR 2.101 to claim federal micro-purchase readiness. FAR governs federal purchases, not state or county ones, and the underlying claim was false anyway, there was no SAM.gov registration and no non-California credentials. Removed the bullet entirely and replaced it with an accurate three-way split: California court placements, private and voluntary accounts nationwide, and a disclaimer for court-mandated cases outside California.</p>
+    </div>
+
+    <div class="catch-item">
+      <h3 class="item-h">The footer links that broke the reading experience</h3>
+      <p>Clicking a footer link (Confidentiality, Resources) loaded the new page at the previous page's scroll position instead of the top. Fixed with a component that resets scroll on every route change.</p>
+    </div>
+
+    <div class="catch-item">
+      <h3 class="item-h">The design drift nobody had named yet</h3>
+      <p>Icon and card styling had drifted across the site, some pale-pink-tinted, some plain white boxes, with no consistent reference point. Picked one existing card as the standard and brought every card, icon, and CTA box on the site in line with it, including redesigning flat-dark CTA boxes to use a photo background with a dark overlay, matching the one CTA section that already looked right.</p>
+    </div>
+
+    <div class="catch-item">
+      <h3 class="item-h">The outreach that was quietly failing</h3>
+      <p>An email to a county agency bounced. The domain listed in a public directory had no DNS records at all. Confirmed the correct live domain against the county's own official vendor page before re-sending.</p>
+    </div>
+
+    <div class="closing">
+      <a href="https://visitations.practicalife.com" target="_blank" class="demo-link">Visit Practical Life Visitations &rarr;</a>
+    </div>
+  </div>
+
+</body>
+</html>

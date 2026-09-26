@@ -423,9 +423,14 @@
     .project-link:hover { opacity: 0.75; }
     .coming-soon { font-size: 13px; color: var(--text-muted); font-style: italic; }
 
-    .case-study-single {
-      max-width: 460px;
-      margin: 56px auto 0;
+    .case-studies-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin-top: 56px;
+      max-width: 940px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .case-study-subtitle {
@@ -743,12 +748,18 @@
       <p class="section-eyebrow">Case Studies: Behind the Build</p>
       <h2 class="section-title">What I caught along the way.</h2>
       <p class="section-body">Every project above is a finished thing. This section is about what happened while building them — moments something looked right, wasn't, and what it took to notice the difference.</p>
-      <div class="case-study-single">
+      <div class="case-studies-grid">
         <div class="project-card">
           <h3 class="project-title">When a paywall isn't actually a paywall</h3>
           <p class="case-study-subtitle">(CX Audit Report System)</p>
           <p class="project-desc">While building the CX Audit Report System, I found that a CSS-based paywall was visually locking findings while leaving the real content readable in the page's source. Here's how I caught it, and what it actually took to fix.</p>
           <a href="case-study-paywall.html" class="project-link">Read the Case Study</a>
+        </div>
+        <div class="project-card">
+          <h3 class="project-title">It worked locally. It didn't work live.</h3>
+          <p class="case-study-subtitle">(Practical Life Visitations)</p>
+          <p class="project-desc">A capability-statement PDF, the exact document a county case worker or agency contact opens to decide whether to place a case, rendered corrupted live even though it checked out locally. Here's the root cause, the fix, and everything else caught building the same site.</p>
+          <a href="case-study-visitations.html" class="project-link">Read the Case Study</a>
         </div>
       </div>
     </section>
